@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Restaurante de Bairro • MVP</title>
+  <meta name="theme-color" content="#B91C1C">
+  <meta name="description" content="Pedidos online, marmitas e fidelidade.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon-180.png">
+  <link rel="icon" href="assets/icons/icon-192.png" sizes="192x192">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --brand:#DC2626; --brand-2:#B91C1C; }
+    html,body { height:100%; background:#1F2937; color:#F3F4F6; font-family:'Poppins',sans-serif; }
+    .glass { background:rgba(255,255,255,0.06); backdrop-filter: blur(8px); }
+    .tag { font-size:.7rem; padding:.2rem .5rem; border-radius:999px; background:#273142; }
+    .chip { border:1px solid #374151; border-radius:999px; padding:.25rem .6rem; }
+    .btn { background: var(--brand); border-radius: .75rem; padding:.7rem 1rem; font-weight:700; }
+    .btn:disabled { opacity:.6; }
+    .btn-outline { border:2px solid var(--brand); color:var(--brand); background:transparent; }
+    .hero {
+      background: radial-gradient(1200px 500px at 80% -20%, rgba(185,28,28,.35), transparent),
+                  radial-gradient(800px 400px at 20% 120%, rgba(217,119,6,.25), transparent);
+    }
+    .card { border:1px solid #374151; border-radius:1rem; overflow:hidden; }
+    .card img { width:100%; height:180px; object-fit:cover; }
+    .pill { background:#1F2937; border-radius:999px; padding:.25rem .6rem; font-size:.75rem; }
+    .nav-btn[aria-selected="true"] { background:#1F2937; color:#FDE68A; }
+    .floating-cart { position:fixed; right:1rem; bottom:1rem; z-index:50; }
+    .shadow-smooth { box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    .grid-auto-fit { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; }
+  </style>
+</head>
+<body>
+  <header class="hero sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <img src="assets/icons/icon-192.png" class="w-10 h-10 rounded-xl" alt="logo">
+        <div>
+          <h1 class="text-xl font-extrabold tracking-tight">Restaurante de Bairro</h1>
+          <p class="text-xs text-gray-300 -mt-1">Sabor de casa, na sua casa.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="installBtn" class="btn btn-outline hidden">Instalar App</button>
+        <a href="#conta" data-nav="conta" class="chip hover:bg-gray-700">Minha Conta</a>
+      </div>
+    </div>
+    <nav class="max-w-6xl mx-auto px-4 pb-4">
+      <div class="flex gap-2 overflow-x-auto p-1 bg-gray-900/40 rounded-xl">
+        <button class="nav-btn chip" data-nav="home" aria-selected="true">Início</button>
+        <button class="nav-btn chip" data-nav="cardapio">Cardápio</button>
+        <button class="nav-btn chip" data-nav="marmitas">Marmitas</button>
+        <button class="nav-btn chip" data-nav="promocoes">Promoções</button>
+        <button class="nav-btn chip" data-nav="fidelidade">Fidelidade</button>
+        <button class="nav-btn chip" data-nav="avaliacoes">Avaliações</button>
+        <button class="nav-btn chip" data-nav="conta">Conta</button>
+        <button class="nav-btn chip" data-nav="carrinho">Carrinho</button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Início -->
+    <section id="view-home" class="space-y-6">
+      <div class="grid lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-2 card shadow-smooth">
+          <img alt="Prato da casa" src="https://images.unsplash.com/photo-1604908553917-cccc7f27f647?q=80&w=1600&auto=format&fit=crop" />
+          <div class="p-4">
+            <h2 class="text-2xl font-bold">Prato do Dia: Picanha na Chapa</h2>
+            <p class="text-sm text-gray-300">Acompanha arroz, feijão, farofa e vinagrete.</p>
+            <div class="flex items-center justify-between mt-3">
+              <span class="text-2xl font-extrabold text-amber-300">R$ 49,90</span>
+              <button class="btn" onclick="addPratoDoDia()">Pedir agora</button>
+            </div>
+          </div>
+        </div>
+        <div class="card p-4">
+          <h3 class="font-bold text-lg">Terça do Pastel 🥟</h3>
+          <p class="text-sm text-gray-300">Use o cupom <span class="pill">PASTELTERCA</span> para 10% OFF.</p>
+          <h3 class="font-bold text-lg mt-4">Quarta do Executivo 🍽️</h3>
+          <p class="text-sm text-gray-300">Cupom <span class="pill">QUARTAPRATO</span> com 15% OFF no prato executivo.</p>
+          <h3 class="font-bold text-lg mt-4">Bem-vindo 🎉</h3>
+          <p class="text-sm text-gray-300">Primeiro pedido? <span class="pill">BEMVINDO</span> dá 20% OFF.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cardápio -->
+    <section id="view-cardapio" class="hidden space-y-4">
+      <div class="flex items-center gap-2 flex-wrap">
+        <input id="search" placeholder="Buscar no cardápio..." class="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 w-full md:w-64" />
+        <div class="flex gap-2">
+          <button class="chip" data-filter="all">Tudo</button>
+          <button class="chip" data-filter="vegetariano">Vegetariano</button>
+          <button class="chip" data-filter="vegano">Vegano</button>
+          <button class="chip" data-filter="sem_gluten">Sem glúten</button>
+        </div>
+      </div>
+      <div id="menuGrid" class="grid-auto-fit"></div>
+    </section>
+
+    <!-- Marmitas -->
+    <section id="view-marmitas" class="hidden space-y-4">
+      <div class="card p-4 space-y-3">
+        <h2 class="text-2xl font-bold">Marmitas</h2>
+        <p class="text-sm text-gray-300">Escolha plano diário ou semanal. Personalize tamanho e acompanhamentos.</p>
+        <div class="grid md:grid-cols-3 gap-3">
+          <div class="glass p-3 rounded-xl">
+            <h3 class="font-bold">Tradicional</h3>
+            <p class="text-sm text-gray-300">Arroz, feijão, proteína do dia, 2 acompanhamentos.</p>
+            <div class="mt-2 font-bold">R$ 29,90</div>
+            <button class="btn mt-2" onclick="addMarmita('Tradicional')">Adicionar</button>
+          </div>
+          <div class="glass p-3 rounded-xl">
+            <h3 class="font-bold">Fit</h3>
+            <p class="text-sm text-gray-300">Arroz integral, legumes, grelhado, salada.</p>
+            <div class="mt-2 font-bold">R$ 32,90</div>
+            <button class="btn mt-2" onclick="addMarmita('Fit')">Adicionar</button>
+          </div>
+          <div class="glass p-3 rounded-xl">
+            <h3 class="font-bold">Vegano</h3>
+            <p class="text-sm text-gray-300">Grãos, vegetais, proteína veg, salada.</p>
+            <div class="mt-2 font-bold">R$ 31,90</div>
+            <button class="btn mt-2" onclick="addMarmita('Vegano')">Adicionar</button>
+          </div>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <label class="chip">Plano:
+            <select id="marmitaPlano" class="bg-transparent ml-2">
+              <option value="diario">Diário</option>
+              <option value="semanal">Semanal</option>
+            </select>
+          </label>
+          <label class="chip">Tamanho:
+            <select id="marmitaTamanho" class="bg-transparent ml-2">
+              <option>P</option><option>M</option><option>G</option>
+            </select>
+          </label>
+          <label class="chip">Trocas:
+            <select id="marmitaTrocas" class="bg-transparent ml-2">
+              <option>Nenhuma</option><option>Salada por Legumes</option><option>Feijão por Feijoada</option>
+            </select>
+          </label>
+          <label class="chip">Dias (semana):
+            <select id="marmitaDias" class="bg-transparent ml-2">
+              <option>5</option><option>6</option><option>7</option>
+            </select>
+          </label>
+          <button class="btn" onclick="assinarMarmita()">Ativar Assinatura</button>
+        </div>
+        <p id="assinaturaStatus" class="text-sm text-green-300"></p>
+      </div>
+    </section>
+
+    <!-- Promoções -->
+    <section id="view-promocoes" class="hidden space-y-4">
+      <div class="card p-4 space-y-2">
+        <h2 class="text-2xl font-bold">Promoções & Cupons</h2>
+        <ul class="list-disc ml-6 text-gray-300">
+          <li>Terça do pastel: cupom <b>PASTELTERCA</b> (10% OFF)</li>
+          <li>Quarta do executivo: cupom <b>QUARTAPRATO</b> (15% OFF)</li>
+          <li>Bem-vindo: cupom <b>BEMVINDO</b> (20% OFF no 1º pedido)</li>
+          <li>Marmitas: cupom <b>MARMITA10</b> (R$ 10 de desconto)</li>
+        </ul>
+        <div class="flex items-center gap-2 mt-2">
+          <input id="cupomInput" placeholder="Inserir cupom..." class="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 w-56" />
+          <button class="btn" onclick="aplicarCupom()">Aplicar</button>
+          <span id="cupomStatus" class="text-sm text-amber-300"></span>
+        </div>
+        <div class="mt-3">
+          <label class="chip">
+            <input type="checkbox" id="notifyToggle" class="mr-2"> Receber promoções
+          </label>
+          <p class="text-xs text-gray-400">* Notificações simuladas no app.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Fidelidade -->
+    <section id="view-fidelidade" class="hidden space-y-4">
+      <div class="card p-4">
+        <h2 class="text-2xl font-bold">Programa de Fidelidade</h2>
+        <p class="text-sm text-gray-300">Ganhe 1 ponto a cada R$ 10 em pedidos. Resgate prêmios automaticamente.</p>
+        <div class="grid md:grid-cols-3 gap-3 mt-3">
+          <div class="glass p-3 rounded-xl">
+            <h3 class="font-bold">50 pts</h3><p>Sobremesa grátis</p>
+          </div>
+          <div class="glass p-3 rounded-xl">
+            <h3 class="font-bold">100 pts</h3><p>R$ 20 de desconto</p>
+          </div>
+          <div class="glass p-3 rounded-xl">
+            <h3 class="font-bold">200 pts</h3><p>Prato executivo grátis</p>
+          </div>
+        </div>
+        <div class="mt-3">
+          <p class="text-lg">Seus pontos: <b id="pts">0</b></p>
+          <p id="resgates" class="text-green-300 text-sm"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Avaliações -->
+    <section id="view-avaliacoes" class="hidden space-y-4">
+      <div class="card p-4">
+        <h2 class="text-2xl font-bold">Avaliações</h2>
+        <div id="reviewsList" class="space-y-2 mt-2"></div>
+        <div class="mt-4 grid md:grid-cols-2 gap-3">
+          <div class="glass p-3 rounded-xl">
+            <h3 class="font-bold">Deixe sua avaliação</h3>
+            <label class="block text-sm mt-2">Nota (1 a 5)
+              <input id="reviewStars" type="number" min="1" max="5" value="5" class="w-20 bg-gray-800 rounded p-2 ml-2" />
+            </label>
+            <textarea id="reviewText" class="w-full mt-2 bg-gray-800 rounded p-2" placeholder="Comentário..."></textarea>
+            <button class="btn mt-2" onclick="enviarReview()">Enviar</button>
+          </div>
+          <div class="glass p-3 rounded-xl">
+            <h3 class="font-bold">Média</h3>
+            <p class="text-3xl font-extrabold" id="mediaAvaliacao">—</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Conta -->
+    <section id="view-conta" class="hidden space-y-4">
+      <div class="card p-4 space-y-3">
+        <h2 class="text-2xl font-bold">Minha Conta</h2>
+        <div class="grid md:grid-cols-2 gap-3">
+          <div class="glass p-3 rounded-xl">
+            <label class="block">Nome
+              <input id="userNome" class="w-full bg-gray-800 rounded p-2 mt-1" placeholder="Seu nome"/>
+            </label>
+            <label class="block mt-2">Telefone
+              <input id="userTel" class="w-full bg-gray-800 rounded p-2 mt-1" placeholder="(xx) xxxxx-xxxx"/>
+            </label>
+            <label class="block mt-2">Endereço
+              <input id="userEnd" class="w-full bg-gray-800 rounded p-2 mt-1" placeholder="Rua, nº, bairro, cidade"/>
+            </label>
+            <label class="block mt-2">Distância (km) p/ entrega
+              <input id="userKm" type="number" min="0" step="0.5" class="w-40 bg-gray-800 rounded p-2 mt-1" value="2"/>
+            </label>
+            <button class="btn mt-3" onclick="salvarConta()">Salvar</button>
+          </div>
+          <div class="glass p-3 rounded-xl">
+            <h3 class="font-bold">Carteira</h3>
+            <p>Saldo: <b id="saldo">R$ 0,00</b></p>
+            <input id="recargaValor" type="number" step="1" class="bg-gray-800 rounded p-2 mt-2 w-40" placeholder="Valor da recarga" />
+            <div class="flex gap-2 mt-2">
+              <button class="chip" onclick="recarga('pix')">Recarga via PIX</button>
+              <button class="chip" onclick="recarga('cartao')">Recarga via Cartão</button>
+            </div>
+            <p id="recargaStatus" class="text-green-300 text-sm mt-1"></p>
+            <h3 class="font-bold mt-4">Seus Pedidos</h3>
+            <div id="ordersList" class="text-sm text-gray-300 space-y-1"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Carrinho -->
+    <section id="view-carrinho" class="hidden space-y-4">
+      <div class="card p-4">
+        <h2 class="text-2xl font-bold">Seu Carrinho</h2>
+        <div id="cartList" class="mt-2 space-y-2"></div>
+        <div class="mt-3 grid md:grid-cols-2 gap-3">
+          <div class="glass p-3 rounded-xl">
+            <div class="text-sm text-green-300 mb-1">⏱️ Entrega estimada: 35–50 min</div>
+              <label>Entrega ou Retirada?
+              <select id="tipoPedido" class="bg-gray-800 rounded p-2 ml-2">
+                <option value="retirada">Retirada</option>
+                <option value="entrega">Entrega</option>
+              </select>
+            </label>
+            <p class="text-sm text-gray-300 mt-1">Taxa de entrega calculada automaticamente.</p>
+            <div class="mt-2">Subtotal: <b id="subtotal">R$ 0,00</b></div>
+            <div>Cupom: <b id="cupomLabel">—</b></div>
+            <div>Taxa entrega: <b id="taxaEntrega">R$ 0,00</b></div>
+            <div class="text-xl font-extrabold mt-1">Total: <span id="total">R$ 0,00</span></div>
+          </div>
+          <div class="glass p-3 rounded-xl">
+            <h3 class="font-bold">Pagamento</h3>
+            <div class="flex gap-2 mt-2 flex-wrap">
+              <button class="chip" onclick="pagar('pix')">PIX (QR Code)</button>
+              <button class="chip" onclick="pagar('cartao')">Cartão</button>
+              <button class="chip" onclick="pagar('carteira')">Carteira</button>
+            </div>
+            <div id="pagamentoArea" class="mt-3"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <button class="floating-cart btn shadow-smooth" data-nav="carrinho">🛒 <span id="cartCount">0</span></button>
+
+  <footer class="max-w-6xl mx-auto px-4 py-10 text-center text-sm text-gray-400">
+    © <span id="year"></span> Restaurante de Bairro — Feito com ❤️
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js'));
+    }
+  </script>
+
+<div id="a2hsModal" class="hidden fixed inset-0 bg-black/60 z-50 items-center justify-center">
+  <div class="bg-gray-900 rounded-2xl p-6 max-w-sm w-full text-center border border-gray-700">
+    <h3 class="text-xl font-bold mb-2">Instalar no iPhone</h3>
+    <p class="text-sm text-gray-300">No Safari, toque em <b>Compartilhar</b> e depois <b>Adicionar à Tela de Início</b>.</p>
+    <button id="closeA2HS" class="btn mt-4 w-full">Entendi</button>
+  </div>
+</div>
+
+</body>
+</html>
