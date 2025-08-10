@@ -1,4 +1,4 @@
-// MVP Restaurante de Bairro
+// Estado
 const state = {
   menu: [],
   cart: [],
@@ -11,19 +11,12 @@ const state = {
   notify: false,
 };
 
-// --------- Utils
+// Utils
 const R = (sel) => document.querySelector(sel);
 const RS = (sel) => Array.from(document.querySelectorAll(sel));
 const money = (v) => v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-
-function save() { localStorage.setItem('rb_state', JSON.stringify(state)); }
-function load() {
-  const s = localStorage.getItem('rb_state');
-  if (s) {
-    const parsed = JSON.parse(s);
-    Object.assign(state, parsed);
-  }
-}
+function save() { localStorage.setItem('rb_state_v3', JSON.stringify(state)); }
+function load() { const s = localStorage.getItem('rb_state_v3'); if (s) Object.assign(state, JSON.parse(s)); }
 
 function toast(msg, ok=true) {
   const el = document.createElement('div');
@@ -33,58 +26,38 @@ function toast(msg, ok=true) {
   setTimeout(() => el.remove(), 2500);
 }
 
-// --------- Nav
-
-// --------- Robust Hash Router
-function navigate(key) {
-  showView(key);
-  const newHash = '#' + key;
-  if (location.hash !== newHash) history.replaceState(null, '', newHash);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-window.addEventListener('hashchange', () => {
-  const key = (location.hash || '#home').replace('#','');
-  showView(key);
-});
-RS('.nav-btn').forEach(btn => btn.addEventListener('click', () => navigate(btn.dataset.nav)));
-document.querySelector('a[data-nav="conta"]')?.addEventListener('click', (e) => { e.preventDefault(); navigate('conta'); });
-
+// Views
 function showView(key) {
   RS('section[id^="view-"]').forEach(sec => sec.classList.add('hidden'));
-  R('#view-' + key).classList.remove('hidden');
-  RS('.nav-btn').forEach(btn => btn.setAttribute('aria-selected','false'));
-  RS(`.nav-btn[data-nav="${key}"]`).forEach(btn => btn.setAttribute('aria-selected','true'));
+  const view = R('#view-' + key);
+  if (view) view.classList.remove('hidden');
+  RS('a.navlink').forEach(a => a.setAttribute('aria-selected', a.getAttribute('href') === '#' + key ? 'true' : 'false'));
   if (key === 'carrinho') updateTotals();
   if (key === 'fidelidade') updatePontos();
   if (key === 'avaliacoes') renderReviews();
   if (key === 'conta') renderConta();
   if (key === 'promocoes') R('#notifyToggle').checked = state.notify;
 }
+
+// Router
+function navigate(key) {
+  const newHash = '#' + key;
+  if (location.hash !== newHash) history.replaceState(null, '', newHash);
+  showView(key);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function routeFromHash() {
+  const key = (location.hash || '#home').replace('#','');
+  const allowed = ['home','cardapio','montar','marmitas','promocoes','fidelidade','avaliacoes','conta','carrinho'];
+  navigate(allowed.includes(key) ? key : 'home');
+}
+window.addEventListener('hashchange', routeFromHash);
 document.addEventListener('click', (e) => {
-  const nav = e.target.closest('[data-nav]');
-  if (nav) { e.preventDefault(); showView(nav.getAttribute('data-nav')); }
+  const a = e.target.closest('a.navlink');
+  if (a && a.getAttribute('href').startsWith('#')) { e.preventDefault(); navigate(a.getAttribute('href').replace('#','')); }
 });
 
-// --------- Install PWA
-
-// --------- iOS Add-to-Home-Screen helper
-function isIos() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
-function isInStandaloneMode() { return ('standalone' in window.navigator) && window.navigator.standalone; }
-function isSafari() { return /^((?!chrome|android).)*safari/i.test(navigator.userAgent); }
-
-(function a2hsHelper(){
-  const installBtn = R('#installBtn');
-  if (!('BeforeInstallPromptEvent' in window) && isIos() && isSafari() && !isInStandaloneMode()) {
-    // Show helper modal when user taps Install
-    installBtn?.classList.remove('hidden');
-    installBtn?.addEventListener('click', () => {
-      R('#a2hsModal').classList.remove('hidden');
-      R('#a2hsModal').classList.add('flex');
-    });
-    R('#closeA2HS')?.addEventListener('click', () => R('#a2hsModal').classList.add('hidden'));
-  }
-})();
-
+// PWA Install
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
@@ -92,6 +65,9 @@ window.addEventListener('beforeinstallprompt', (e) => {
   R('#installBtn').classList.remove('hidden');
 });
 R('#installBtn')?.addEventListener('click', async () => {
+  if (isIos() && isSafari() && !isInStandaloneMode()) {
+    R('#a2hsModal').classList.remove('hidden'); R('#a2hsModal').classList.add('flex'); return;
+  }
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
   const { outcome } = await deferredPrompt.userChoice;
@@ -99,59 +75,53 @@ R('#installBtn')?.addEventListener('click', async () => {
   deferredPrompt = null;
   R('#installBtn').classList.add('hidden');
 });
+R('#closeA2HS')?.addEventListener('click', () => R('#a2hsModal').classList.add('hidden'));
 
-// --------- Data (Cardápio)
+function isIos() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+function isInStandaloneMode() { return ('standalone' in window.navigator) && window.navigator.standalone; }
+function isSafari() { return /^((?!chrome|android).)*safari/i.test(navigator.userAgent); }
+
+// Data (Cardápio)
 function seedMenu() {
   state.menu = [
-    {
-      id:'picanha', cat:'executivo', nome:'Picanha na Chapa', preco:49.90,
-      desc:'Picanha suculenta na chapa com arroz, feijão, farofa e vinagrete.',
-      tags:['sem_gluten'], img:'https://images.unsplash.com/photo-1604908553917-cccc7f27f647?q=80&w=1200&auto=format&fit=crop'
-    },
-    {
-      id:'parmegiana', cat:'executivo', nome:'Parmegiana de Frango', preco:39.90,
-      desc:'Filé de frango à parmegiana com purê de batatas e arroz.',
-      tags:[], img:'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1200&auto=format&fit=crop'
-    },
-    {
-      id:'pastelcarne', cat:'pastel', nome:'Pastel de Carne', preco:9.90,
-      desc:'Pastel crocante de carne moída temperada.', tags:[], 
-      img:'https://images.unsplash.com/photo-1625944525765-6796c7478687?q=80&w=1200&auto=format&fit=crop'
-    },
-    {
-      id:'pastelqueijo', cat:'pastel', nome:'Pastel de Queijo', preco:9.90,
-      desc:'Clássico pastel de queijo derretido.', tags:['vegetariano'], 
-      img:'https://images.unsplash.com/photo-1560300851-f86c6a57aa9b?q=80&w=1200&auto=format&fit=crop'
-    },
-    {
-      id:'burger', cat:'lanches', nome:'Cheeseburger da Casa', preco:29.90,
-      desc:'Blend artesanal, queijo, alface, tomate e molho especial.',
-      tags:[], img:'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1200&auto=format&fit=crop'
-    },
-    {
-      id:'pizza4q', cat:'pizzas', nome:'Pizza Quatro Queijos', preco:59.90,
-      desc:'Mussarela, parmesão, gorgonzola e provolone.', tags:['vegetariano'],
-      img:'https://images.unsplash.com/photo-1542281286-9e0a16bb7366?q=80&w=1200&auto=format&fit=crop'
-    },
-    {
-      id:'salada', cat:'saladas', nome:'Salada Mediterrânea', preco:27.90,
-      desc:'Folhas, tomate-cereja, azeitonas, grão-de-bico e azeite.',
-      tags:['vegano','sem_gluten'], img:'https://images.unsplash.com/photo-1551183053-bf91a1d81141?q=80&w=1200&auto=format&fit=crop'
-    },
-    {
-      id:'brownie', cat:'sobremesas', nome:'Brownie com Sorvete', preco:19.90,
-      desc:'Brownie de chocolate com bola de sorvete de creme.', tags:[],
-      img:'https://images.unsplash.com/photo-1551024709-8f23befc6cf7?q=80&w=1200&auto=format&fit=crop'
-    },
-    {
-      id:'suco', cat:'bebidas', nome:'Suco Natural de Laranja (500ml)', preco:9.50,
-      desc:'Feito na hora, sem açúcar.', tags:['vegano','sem_gluten'],
-      img:'https://images.unsplash.com/photo-1542444459-db63c3c3583b?q=80&w=1200&auto=format&fit=crop'
-    }
+    { id:'parmegiana', cat:'executivo', nome:'Parmegiana de Frango', preco:39.90,
+      desc:'Filé de frango à parmegiana com arroz, feijão e batata palha.', tags:[], img:'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1200&auto=format&fit=crop' },
+    { id:'bife-acebolado', cat:'executivo', nome:'Bife Acebolado', preco:34.90,
+      desc:'Bife suculento com cebola, arroz, feijão e salada.', tags:['sem_gluten'], img:'https://images.unsplash.com/photo-1615937691192-2b62bba40343?q=80&w=1200&auto=format&fit=crop' },
+    { id:'feijoada', cat:'executivo', nome:'Feijoada Completa (quartas e sábados)', preco:44.90,
+      desc:'Feijoada com arroz, couve, farofa e laranja.', tags:['sem_gluten'], img:'https://images.unsplash.com/photo-1634496066408-74f3d9ab8321?q=80&w=1200&auto=format&fit=crop' },
+    { id:'virado-paulista', cat:'executivo', nome:'Virado à Paulista', preco:42.90,
+      desc:'Tutu de feijão, arroz, bisteca, banana, couve e torresmo.', tags:[], img:'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=1200&auto=format&fit=crop' },
+    { id:'tilapia', cat:'executivo', nome:'Tilápia Grelhada', preco:41.90,
+      desc:'Tilápia na chapa com arroz, feijão e salada.', tags:['sem_gluten'], img:'https://images.unsplash.com/photo-1604908176997-431624a1fac2?q=80&w=1200&auto=format&fit=crop' },
+    { id:'tropeiro', cat:'executivo', nome:'Feijão Tropeiro', preco:36.90,
+      desc:'Tropeiro mineiro com couve, ovo e torresmo.', tags:[], img:'https://images.unsplash.com/photo-1541690217667-95a6f94d8b56?q=80&w=1200&auto=format&fit=crop' },
+    { id:'pastel-queijo', cat:'pastel', nome:'Pastel de Queijo', preco:9.90,
+      desc:'Massinha crocante com queijo derretido.', tags:['vegetariano'], img:'https://images.unsplash.com/photo-1560300851-f86c6a57aa9b?q=80&w=1200&auto=format&fit=crop' },
+    { id:'pastel-carne', cat:'pastel', nome:'Pastel de Carne', preco:9.90,
+      desc:'Pastel de carne moída temperada.', tags:[], img:'https://images.unsplash.com/photo-1625944525765-6796c7478687?q=80&w=1200&auto=format&fit=crop' },
+    { id:'calabresa', cat:'lanches', nome:'Calabresa Acebolada', preco:29.90,
+      desc:'Linguiça calabresa acebolada com farofa.', tags:[], img:'https://images.unsplash.com/photo-1604908553917-cccc7f27f647?q=80&w=1200&auto=format&fit=crop' },
+    { id:'escondidinho', cat:'executivo', nome:'Escondidinho de Carne Seca', preco:39.90,
+      desc:'Purê de mandioca cremoso com carne seca desfiada.', tags:[], img:'https://images.unsplash.com/photo-1511690656952-34342bb7c2f2?q=80&w=1200&auto=format&fit=crop' },
+    { id:'polenta', cat:'porcoes', nome:'Polenta com Ragu', preco:32.90,
+      desc:'Polenta cremosa com ragu de carne.', tags:[], img:'https://images.unsplash.com/photo-1584278864770-4b86d8cf1f9a?q=80&w=1200&auto=format&fit=crop' },
+    { id:'salada', cat:'saladas', nome:'Salada da Casa', preco:24.90,
+      desc:'Folhas, tomate-cereja, cenoura, pepino e azeite.', tags:['vegano','sem_gluten'], img:'https://images.unsplash.com/photo-1551183053-bf91a1d81141?q=80&w=1200&auto=format&fit=crop' },
+    { id:'pudim', cat:'sobremesas', nome:'Pudim de Leite', preco:14.90,
+      desc:'Pudim clássico com calda de caramelo.', tags:['vegetariano'], img:'https://images.unsplash.com/photo-1546793665-c74683f339c1?q=80&w=1200&auto=format&fit=crop' },
+    { id:'brigadeiro', cat:'sobremesas', nome:'Brigadeiro Gourmet (2un)', preco:9.90,
+      desc:'Doce de leite condensado com cacau e granulado.', tags:['vegetariano'], img:'https://images.unsplash.com/photo-1541782814457-db9ca3cbeeaf?q=80&w=1200&auto=format&fit=crop' },
+    { id:'suco-laranja', cat:'bebidas', nome:'Suco de Laranja (500ml)', preco:9.50,
+      desc:'Feito na hora, sem açúcar.', tags:['vegano','sem_gluten'], img:'https://images.unsplash.com/photo-1542444459-db63c3c3583b?q=80&w=1200&auto=format&fit=crop' },
+    { id:'suco-maracuja', cat:'bebidas', nome:'Suco de Maracujá (500ml)', preco:9.50,
+      desc:'Refrescante e natural.', tags:['vegano','sem_gluten'], img:'https://images.unsplash.com/photo-1613478223719-2ab802602423?q=80&w=1200&auto=format&fit=crop' },
+    { id:'guarana', cat:'bebidas', nome:'Guaraná Lata', preco:7.00,
+      desc:'350 ml gelado.', tags:['vegano','sem_gluten'], img:'https://images.unsplash.com/photo-1595689420006-7198bc51e5c2?q=80&w=1200&auto=format&fit=crop' }
   ];
 }
 
-// --------- Render Menu
+// Render do Cardápio
 function renderMenu(list = state.menu) {
   const grid = R('#menuGrid');
   grid.innerHTML = '';
@@ -166,7 +136,7 @@ function renderMenu(list = state.menu) {
             <h3 class="font-bold text-lg">${item.nome}</h3>
             <p class="text-sm text-gray-300">${item.desc}</p>
             <div class="flex gap-2 mt-1">
-              ${item.tags.map(t => `<span class="tag">${t.replace('_',' ')}</span>`).join('')}
+              ${item.tags.map(t => `<span class="pill">${t.replace('_',' ')}</span>`).join('')}
             </div>
           </div>
           <div class="text-amber-300 font-extrabold">${money(item.preco)}</div>
@@ -174,7 +144,7 @@ function renderMenu(list = state.menu) {
         <div class="mt-2 flex items-center gap-2 flex-wrap">
           <label class="chip">Tamanho
             <select class="bg-transparent ml-2">
-              <option>P</option><option>M</option><option>G</option>
+              <option>P</option><option selected>M</option><option>G</option>
             </select>
           </label>
           <input placeholder="Observações (ex.: sem cebola)" class="bg-gray-800 rounded p-2 flex-1"/>
@@ -197,18 +167,15 @@ function filterMenu(type) {
   renderMenu(filtered);
 }
 
-// --------- Cart
+// Carrinho
 function addToCart(id, opt = {}) {
   const item = state.menu.find(m => m.id === id);
   if (!item) return;
   state.cart.push({ ...item, qtd:1, ...opt });
-  save();
-  updateCartCount();
+  save(); updateCartCount();
   toast('Adicionado ao carrinho!');
 }
-function addPratoDoDia() {
-  addToCart('picanha', { size:'M', obs:'' });
-}
+function addPratoDoDia() { addToCart('parmegiana', { size:'M', obs:'' }); }
 function addMarmita(tipo) {
   const basePrice = tipo === 'Tradicional' ? 29.90 : (tipo === 'Fit' ? 32.90 : 31.90);
   state.cart.push({
@@ -222,9 +189,7 @@ function removeFromCart(idx) {
   state.cart.splice(idx,1);
   save(); renderCart(); updateTotals(); updateCartCount();
 }
-function updateCartCount() {
-  R('#cartCount').textContent = state.cart.length;
-}
+function updateCartCount() { R('#cartCount').textContent = state.cart.length; }
 function renderCart() {
   const area = R('#cartList');
   area.innerHTML = '';
@@ -256,10 +221,8 @@ function changeQtd(i, val) {
   save(); updateTotals(); renderCart();
 }
 
-// --------- Totals & Delivery
-function getSubtotal() {
-  return state.cart.reduce((s, c) => s + c.preco * c.qtd, 0);
-}
+// Totais
+function getSubtotal() { return state.cart.reduce((s, c) => s + c.preco * c.qtd, 0); }
 function calcTaxaEntrega() {
   const tipo = R('#tipoPedido').value;
   if (tipo === 'retirada') return 0;
@@ -285,7 +248,7 @@ function updateTotals() {
 }
 R('#tipoPedido')?.addEventListener('change', updateTotals);
 
-// --------- Cupons
+// Cupons
 const COUPONS = {
   'PASTELTERCA': { code:'PASTELTERCA', type:'percent', value:0.10 },
   'QUARTAPRATO': { code:'QUARTAPRATO', type:'percent', value:0.15 },
@@ -299,13 +262,11 @@ function aplicarCupom() {
   if (c.once && state.pedidos.some(p => p.cupom === 'BEMVINDO')) {
     R('#cupomStatus').textContent = 'Cupom BEMVINDO já utilizado.'; return;
   }
-  state.cupomAtivo = c;
-  save();
-  updateTotals();
+  state.cupomAtivo = c; save(); updateTotals();
   R('#cupomStatus').textContent = 'Cupom aplicado!';
 }
 
-// --------- Pagamento
+// Pagamento
 function pagar(tipo) {
   const total = updateTotals();
   const area = R('#pagamentoArea');
@@ -333,13 +294,9 @@ function pagar(tipo) {
         <input class="bg-gray-800 rounded p-2 w-1/2" placeholder="Validade (MM/AA)">
         <input class="bg-gray-800 rounded p-2 w-1/2" placeholder="CVV">
       </div>
-      <button class="btn mt-2">Pagar R$ ${total.toFixed(2)}</button>`;
+      <button class="btn mt-2">Pagar ${money(total)}</button>`;
     form.querySelector('button').onclick = () => finalizarPedido('Cartão', total);
     area.appendChild(form);
-  }
-  if (tipo === 'dinheiro') {
-    area.innerHTML = `<p class="text-green-300">Pagamento em dinheiro selecionado. Leve o valor exato ou troco será combinado na entrega.</p><button class="btn mt-2">Confirmar pedido em dinheiro</button>`;
-    area.querySelector('button').onclick = () => finalizarPedido('Dinheiro', total);
   }
   if (tipo === 'carteira') {
     if (state.user.saldo >= total) {
@@ -351,6 +308,10 @@ function pagar(tipo) {
     } else {
       area.innerHTML = `<p class="text-amber-300">Saldo insuficiente. Faça uma recarga na aba Conta.</p>`;
     }
+  }
+  if (tipo === 'dinheiro') {
+    area.innerHTML = `<p class="text-green-300">Pagamento em dinheiro selecionado. Troco combinado na entrega.</p><button class="btn mt-2">Confirmar pedido em dinheiro</button>`;
+    area.querySelector('button').onclick = () => finalizarPedido('Dinheiro', total);
   }
 }
 
@@ -368,7 +329,6 @@ function finalizarPedido(metodo, total) {
   state.pedidos.unshift(pedido);
   const earned = Math.floor((total)/10);
   state.pontos += earned;
-  // Resgate automático
   let resgate = '';
   if (state.pontos >= 200) { resgate = 'Prato executivo grátis'; state.pontos -= 200; }
   else if (state.pontos >= 100) { resgate = 'R$ 20 de desconto'; state.pontos -= 100; }
@@ -379,12 +339,11 @@ function finalizarPedido(metodo, total) {
   save();
   updateCartCount(); updateTotals(); renderCart(); renderConta(); updatePontos();
   toast(`Pedido ${id} confirmado!`);
-  // Simular progresso de status
   setTimeout(() => { pedido.status = 'Pronto'; save(); renderConta(); }, 2500);
   setTimeout(() => { pedido.status = 'Entregue'; save(); renderConta(); }, 5000);
 }
 
-// --------- Conta
+// Conta
 function renderConta() {
   R('#userNome').value = state.user.nome || '';
   R('#userTel').value = state.user.tel || '';
@@ -392,14 +351,14 @@ function renderConta() {
   R('#userKm').value = state.user.km || 2;
   R('#saldo').textContent = money(state.user.saldo||0);
   const list = R('#ordersList');
-  list.innerHTML = state.pedidos.map(p => \`
+  list.innerHTML = state.pedidos.map(p => `
     <div class="glass p-2 rounded-lg">
       <div class="flex items-center justify-between">
-        <b>\${p.id}</b> <span>\${p.status}</span>
+        <b>${p.id}</b> <span>${p.status}</span>
       </div>
-      <div>\${p.data} — Total: <b>\${money(p.total)}</b> — via \${p.metodo}</div>
-      <button class="chip mt-1" onclick="marcarEntregue('\${p.id}')">Marcar como entregue</button>
-    </div>\`).join('');
+      <div>${p.data} — Total: <b>${money(p.total)}</b> — via ${p.metodo}</div>
+      <button class="chip mt-1" onclick="marcarEntregue('${p.id}')">Marcar como entregue</button>
+    </div>`).join('');
 }
 function salvarConta() {
   state.user.nome = R('#userNome').value.trim();
@@ -418,17 +377,12 @@ function recarga(tipo) {
   R('#recargaStatus').textContent = 'Recarga via ' + (tipo==='pix'?'PIX':'Cartão') + ' efetuada (simulada).';
   toast('Recarga adicionada!');
 }
-function marcarEntregue(id) {
-  const p = state.pedidos.find(x => x.id === id);
-  if (p) { p.status = 'Entregue'; save(); renderConta(); }
-}
+function marcarEntregue(id) { const p = state.pedidos.find(x => x.id === id); if (p) { p.status = 'Entregue'; save(); renderConta(); } }
 
-// --------- Fidelidade
-function updatePontos() {
-  R('#pts').textContent = state.pontos;
-}
+// Fidelidade
+function updatePontos() { R('#pts').textContent = state.pontos; }
 
-// --------- Avaliações
+// Avaliações
 function renderReviews() {
   const area = R('#reviewsList');
   area.innerHTML = '';
@@ -442,7 +396,7 @@ function renderReviews() {
     sum += r.stars;
     const el = document.createElement('div');
     el.className = 'glass p-2 rounded-lg';
-    el.innerHTML = \`<b>\${'★'.repeat(r.stars)}\${'☆'.repeat(5-r.stars)}</b> — \${r.text} <span class="text-xs text-gray-400">(\${r.date})</span>\`;
+    el.innerHTML = `<b>${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</b> — ${r.text} <span class="text-xs text-gray-400">(${r.date})</span>`;
     area.appendChild(el);
   });
   const avg = (sum / state.reviews.length).toFixed(1);
@@ -457,20 +411,47 @@ function enviarReview() {
   toast('Obrigado pelo feedback!');
 }
 
-// --------- Marmita assinatura
-function assinarMarmita() {
-  state.assinatura = {
-    plano: R('#marmitaPlano').value,
-    tamanho: R('#marmitaTamanho').value,
-    trocas: R('#marmitaTrocas').value,
-    dias: R('#marmitaDias').value
+// Monte seu prato
+function calcBuilderTotal() {
+  const base = 24.90;
+  const prot = R('#bProt').value;
+  let extra = 0;
+  if (prot.includes('Bife')) extra = 6;
+  else if (prot.includes('Frango')) extra = 5;
+  else if (prot.includes('Linguiça')) extra = 4;
+  else if (prot.includes('Tilápia')) extra = 7;
+  const size = R('#bTam').value;
+  const mult = size === 'G' ? 1.3 : (size === 'P' ? 0.9 : 1.0);
+  const total = (base + extra) * mult;
+  R('#bTotal').textContent = money(total);
+  return total;
+}
+['change','input'].forEach(evt => {
+  R('#bProt')?.addEventListener(evt, calcBuilderTotal);
+  R('#bTam')?.addEventListener(evt, calcBuilderTotal);
+});
+function adicionarPratoMontado() {
+  const checks = RS('.bAcomp:checked');
+  if (checks.length !== 2) { toast('Escolha 2 acompanhamentos.', false); return; }
+  const base = R('#bBase').value;
+  const prot = R('#bProt').value;
+  const a1 = checks[0].value, a2 = checks[1].value;
+  const size = R('#bTam').value;
+  const obs = R('#bObs').value.trim();
+  const total = calcBuilderTotal();
+  const item = {
+    id:'builder-'+Math.random().toString(36).slice(2,7),
+    nome:`Prato montado — ${size}`,
+    preco: Number(total.toFixed(2)),
+    desc:`Base: ${base} • Prot: ${prot} • Acomp: ${a1}, ${a2}`,
+    img:'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1200&auto=format&fit=crop',
+    tags:[], qtd:1, size, obs
   };
-  save();
-  R('#assinaturaStatus').textContent = 'Assinatura ativa: ' + state.assinatura.plano.toUpperCase() + ' (' + state.assinatura.dias + ' dias/semana)';
-  toast('Assinatura ativada!');
+  state.cart.push(item);
+  save(); updateCartCount(); toast('Prato adicionado!');
 }
 
-// --------- Search & Filters
+// Busca & Filtros
 R('#search')?.addEventListener('input', (e) => {
   const q = e.target.value.toLowerCase();
   const list = state.menu.filter(m => (m.nome + m.desc).toLowerCase().includes(q));
@@ -478,22 +459,13 @@ R('#search')?.addEventListener('input', (e) => {
 });
 RS('[data-filter]').forEach(btn => btn.addEventListener('click', () => filterMenu(btn.dataset.filter)));
 
-// --------- Promo notify toggle
-R('#notifyToggle')?.addEventListener('change', (e) => {
-  state.notify = e.target.checked; save();
-  if (state.notify) toast('Você receberá promoções (simulado).');
-});
-
-// --------- Init
-(function init() {
+// Init
+(function init(){
   document.getElementById('year').textContent = new Date().getFullYear();
   load();
   if (!state.menu || state.menu.length === 0) seedMenu();
   renderMenu();
   updateCartCount();
-
-  const initial = (location.hash || '#home').replace('#','');
-  showView(initial);
-  RS('.nav-btn').forEach(btn => btn.setAttribute('aria-selected', btn.dataset.nav === initial ? 'true' : 'false'));
-
+  calcBuilderTotal();
+  routeFromHash();
 })();

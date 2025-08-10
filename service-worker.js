@@ -1,4 +1,4 @@
-const CACHE_NAME = 'restaurante-de-bairro-v1';
+const CACHE = 'rb-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -9,34 +9,42 @@ const ASSETS = [
   './assets/icons/apple-touch-icon-180.png'
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-    ))
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
   );
   self.clients.claim();
 });
 
-self.addEventListener('fetch', (event) => {
-  const req = event.request;
-  event.respondWith(
-    caches.match(req).then(cached => {
-      const fetchPromise = fetch(req).then(networkRes => {
-        if (req.method === 'GET' && networkRes && networkRes.status === 200) {
-          const copy = networkRes.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-        }
-        return networkRes;
-      }).catch(() => cached);
-      return cached || fetchPromise;
-    })
-  );
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  const url = new URL(req.url);
+
+  if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
+    e.respondWith(
+      fetch(req).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(req, copy));
+        return res;
+      }).catch(() => caches.match(req).then(r => r || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  if (req.method === 'GET') {
+    e.respondWith(
+      caches.match(req).then(cached => {
+        return cached || fetch(req).then(res => {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(req, copy));
+          return res;
+        });
+      })
+    );
+  }
 });

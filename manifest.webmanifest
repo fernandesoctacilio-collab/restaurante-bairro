@@ -1,11 +1,12 @@
 {
   "name": "Restaurante de Bairro",
   "short_name": "Rest. Bairro",
-  "description": "Pedidos online, marmitas, promoções e fidelidade do Restaurante de Bairro.",
-  "start_url": ".",
+  "description": "Cardápio, pedidos, marmitas, montar prato e fidelidade.",
+  "start_url": "./?src=pwa",
   "display": "standalone",
-  "background_color": "#111827",
-  "theme_color": "#DC2626",
+  "background_color": "#0F172A",
+  "theme_color": "#EF4444",
+  "scope": "./",
   "icons": [
     {
       "src": "assets/icons/icon-192.png",
